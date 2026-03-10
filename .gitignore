@@ -1,0 +1,28 @@
+# Dependencias
+/vendor/
+
+# Datos en tiempo de ejecución — nunca subir a git
+/data/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.log
+error_log
+
+# Configuración con credenciales
+/config.php
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDEs
+.idea/
+.vscode/
+*.suo
+*.user
+
+# PHP
+*.cache
+/storage/

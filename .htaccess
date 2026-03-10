@@ -1,0 +1,33 @@
+# ================================================================
+#  STREAM REDIRECTOR — .htaccess
+# ================================================================
+
+Options -Indexes
+RewriteEngine On
+
+# ── CORS ──────────────────────────────────────────────────────
+<IfModule mod_headers.c>
+    Header always set Access-Control-Allow-Origin  "*"
+    Header always set Access-Control-Allow-Methods "GET, OPTIONS"
+    Header always set Access-Control-Allow-Headers "Origin, Accept, Content-Type"
+    Header always set Access-Control-Max-Age       "86400"
+</IfModule>
+
+RewriteCond %{REQUEST_METHOD} OPTIONS
+RewriteRule ^ - [R=204,L]
+
+# Bloquear acceso directo a archivos sensibles
+RewriteRule ^config\.php$ - [F,L]
+RewriteRule ^(.*)\.(log|db|sql|env)$ - [F,L]
+
+# ── Audio MP3 ─────────────────────────────────────────────────
+RewriteCond %{QUERY_STRING} (?:^|&)format=mp3(?:&|$)
+RewriteRule ^$ /index.php [L,QSA]
+
+# ── Video HLS ─────────────────────────────────────────────────
+RewriteCond %{QUERY_STRING} (?:^|&)format=hls(?:&|$)
+RewriteRule ^$ /index.php [L,QSA]
+
+# ── Dashboard ─────────────────────────────────────────────────
+RewriteRule ^stats/?$ /stats.php [L]
+RewriteRule ^stats/api/?$ /stats.php?api=1 [L,QSA]
