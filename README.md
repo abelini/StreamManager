@@ -1,4 +1,4 @@
-# 📻 Radio UAS — Stream Redirector
+# Stream Manager
 
 Sistema de redirección de streams de audio y video con estadísticas en tiempo real. Intercepta las peticiones, registra métricas (formato, origen, geolocalización) en SQLite y redirige al servidor de streaming real.
 
@@ -16,33 +16,38 @@ Sistema de redirección de streams de audio y video con estadísticas en tiempo 
 
 ```bash
 # 1. Subir todos los archivos al servidor
-# 2. Copiar config de ejemplo y editar credenciales
-cp config.example.php config.php
 
-# 3. Asegurarse de que el directorio data/ sea escribible
+# 2. Crear config.local.php basado en el ejemplo
+cp config.local.php.example config.local.php
+
+# 3. Editar credenciales en config.local.php
+#    La contraseña se hashea automáticamente
+
+# 4. Asegurarse de que el directorio data/ sea escribible
 chmod 750 data/
 ```
-
-El sistema crea y migra la base de datos SQLite automáticamente en el primer request.
 
 ---
 
 ## Configuración
 
-Editar `config.php`:
+Editar `config.local.php`:
 
 ```php
-'streams' => [
-    'mp3' => ['url' => 'https://tuservidor.com:8000/stream', 'redirect' => 302],
-    'hls' => ['url' => 'https://tuservidor.com/live/stream.m3u8', 'redirect' => 302],
-],
+return [
+    'STATS_USERNAME' => 'admin',
+    'STATS_PASSWORD' => 'tu_contraseña_segura',
 
-'stats' => [
-    'enabled'  => true,
-    'username' => 'admin',
-    'password' => 'tu_clave_segura',
-],
+    'MP3_STREAM_URL' => 'https://tuservidor.com:8000/stream',
+    'HLS_STREAM_URL' => 'https://tuservidor.com/live/stream.m3u8',
+];
+```
 
+**Nota:** La contraseña en texto plano se hashea automáticamente con `PASSWORD_BCRYPT` cuando se carga la configuración.
+
+Parámetros disponibles en `config.php`:
+
+```php
 'rate_limit' => [
     'enabled'        => true,
     'max_per_minute' => 60,
@@ -57,14 +62,14 @@ Editar `config.php`:
 
 ```
 # Audio MP3
-https://stream.radiouas.org/?format=mp3&referer=uas.edu.mx
+https://tusitio.com/?format=mp3&referer=ejemplo.com
 
 # Video HLS
-https://stream.radiouas.org/?format=hls&ref=android
+https://tusitio.com/?format=hls&ref=android
 
 # Parámetros aceptados
 ?format=   mp3 | hls | m3u8 (alias de hls)
-?referer=  dominio (tunein.com) o nombre de app (android, ios, alexa)
+?referer= dominio (tunein.com) o nombre de app (android, ios, alexa)
 ?ref=      alias corto de ?referer=
 ```
 
@@ -73,15 +78,15 @@ El sistema detecta automáticamente si el origen es un dominio (contiene `.`) o 
 ### Dashboard de estadísticas
 
 ```
-https://stream.radiouas.org/stats
+https://tusitio.com/stats
 ```
 
-Requiere autenticación HTTP Basic con las credenciales definidas en `config.php`.
+Requiere autenticación HTTP Basic.
 
 ### API JSON
 
 ```
-https://stream.radiouas.org/stats?api=1&from=2026-03-01&to=2026-03-31
+https://tusitio.com/stats?api=1&from=2026-01-01&to=2026-01-31
 ```
 
 ---
@@ -108,43 +113,36 @@ src/
 │   ├── RateLimiter           Control de peticiones por IP/minuto vía SQLite
 │   └── RateLimitResult       DTO del resultado de verificación
 └── Storage/
-    ├── Database              Singleton PDO + migraciones automáticas
+    ├── Database              Singleton PDO + creación de tablas
     ├── GeoLocator            Geolocalización vía ip-api.com con cache SQLite
     └── GeoResult             DTO inmutable de datos geográficos
 ```
 
-**Sin Composer** — autoloader PSR-4 manual en `autoload.php`. No hay dependencias externas; todo usa extensiones nativas de PHP (`pdo_sqlite`, `curl`).
+**Sin Composer** — autoloader PSR-4 manual en `autoload.php`. No hay dependencias externas.
 
 ---
 
 ## Base de datos
 
-SQLite en `data/stream_stats.sqlite`. Las migraciones se ejecutan automáticamente.
+SQLite en `data/stream_stats.sqlite`. Las tablas se crean automáticamente.
 
-| Tabla            | Descripción                              |
-|------------------|------------------------------------------|
-| `stream_hits`    | Registro de cada petición al stream      |
-| `ip_geo`         | Cache de geolocalización por IP          |
-| `rate_limits`    | Control de peticiones por IP/minuto      |
-| `schema_migrations` | Versiones de migración aplicadas      |
+| Tabla         | Descripción                           |
+|---------------|---------------------------------------|
+| `stream_hits` | Registro de cada petición al stream   |
+| `ip_geo`      | Cache de geolocalización por IP       |
+| `rate_limits` | Control de peticiones por IP/minuto   |
 
 ---
 
 ## Geolocalización
 
-Usa [ip-api.com](http://ip-api.com) (gratuito, 45 req/min sin API key). Los resultados se cachean en SQLite para no repetir consultas por la misma IP.
-
-Para actualizar el cache de IPs existentes sin código postal:
-
-```bash
-php geo-backfill.php
-```
+Usa [ip-api.com](http://ip-api.com) (gratuito, 45 req/min sin API key). Los resultados se cachean en SQLite.
 
 ---
 
 ## Zona horaria
 
-Todos los timestamps se guardan en hora local `America/Mazatlan` (UTC-7).
+Todos los timestamps se guardan en hora local `America/Mazatlan`.
 
 ---
 
@@ -156,25 +154,28 @@ Todos los timestamps se guardan en hora local `America/Mazatlan` (UTC-7).
 ├── index.php               Entry point del redirector
 ├── stats.php               Dashboard + API JSON
 ├── autoload.php            Autoloader PSR-4 sin Composer
-├── config.php              Credenciales y configuración (no versionar)
-├── config.example.php      Plantilla de configuración
+├── config.php              Carga configuración (no versionar)
+├── config.local.php        Configuración local con credenciales (no versionar)
+├── config.local.php.example Plantilla de configuración
+├── migrate.php             Script de migración de BD
 ├── data/
 │   ├── stream_stats.sqlite Base de datos SQLite
 │   └── access.log          Log de accesos
-└── src/                    Código fuente (ver Arquitectura)
+└── src/                    Código fuente
 ```
 
 ---
 
 ## Seguridad
 
-- `data/` debe estar fuera del webroot o protegido con `.htaccess`
-- `config.php` está en `.gitignore` — nunca subir credenciales al repositorio
-- Rate limiting activo por defecto: 60 req/min por IP
+- `data/` está protegido con `.htaccess`
+- `config.local.php` está en `.gitignore`
+- Rate limiting activo: 60 req/min por IP
+- Contraseña hasheada con `PASSWORD_BCRYPT`
 - Autenticación HTTP Basic en el dashboard
 
 ---
 
 ## Licencia
 
-Uso interno — Radio UAS.
+Uso interno.
