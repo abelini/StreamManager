@@ -50,6 +50,14 @@ final class GeoLocator
     /** Indica si la IP es privada o reservada y no debe consultarse. */
     private function shouldSkip(string $ip): bool
     {
+        if ($ip === '' || $ip === 'unknown') {
+            return true;
+        }
+
+        if (!filter_var($ip, FILTER_VALIDATE_IP)) {
+            return true;
+        }
+
         foreach (self::SKIP_RANGES as $prefix) {
             if (str_starts_with($ip, $prefix)) {
                 return true;

@@ -6,7 +6,9 @@ namespace Stream\Storage;
 use PDO;
 use PDOException;
 
-/** Singleton que gestiona la conexión PDO a SQLite y ejecuta migraciones. */
+/**
+ * Gestiona la conexión PDO a SQLite.
+ */
 final class Database
 {
     private static self|null $instance = null;
@@ -32,51 +34,27 @@ final class Database
             throw new \RuntimeException('No se pudo abrir la base de datos SQLite', previous: $e);
         }
 
-        $this->applyPragmas();
-        $this->migrate();
+        $this->setup();
     }
 
-    /** Devuelve la instancia única; la crea si no existe. */
+    /**
+     * Devuelve la instancia única; la crea si no existe.
+     */
     public static function getInstance(string $path): self
     {
         return self::$instance ??= new self($path);
     }
 
-    /** Aplica configuraciones de rendimiento y seguridad a SQLite. */
-    private function applyPragmas(): void
+    /**
+     * Configura SQLite y crea las tablas si no existen.
+     */
+    private function setup(): void
     {
         $this->pdo->exec('PRAGMA journal_mode = WAL');
         $this->pdo->exec('PRAGMA synchronous  = NORMAL');
         $this->pdo->exec('PRAGMA foreign_keys = ON');
         $this->pdo->exec('PRAGMA temp_store   = MEMORY');
-    }
 
-    /** Ejecuta migraciones pendientes en orden de versión. */
-    private function migrate(): void
-    {
-        $this->pdo->exec(<<<'SQL'
-            CREATE TABLE IF NOT EXISTS schema_migrations (
-                version    INTEGER PRIMARY KEY,
-                applied_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
-            )
-        SQL);
-
-        $version = (int) $this->pdo
-            ->query('SELECT COALESCE(MAX(version), 0) FROM schema_migrations')
-            ->fetchColumn();
-
-        if ($version < 1) {
-            $this->migrateV1();
-        }
-
-        if ($version < 2) {
-            $this->migrateV2();
-        }
-    }
-
-    /** v1: crea tablas base stream_hits y rate_limits. */
-    private function migrateV1(): void
-    {
         $this->pdo->exec(<<<'SQL'
             CREATE TABLE IF NOT EXISTS stream_hits (
                 id           INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -86,28 +64,25 @@ final class Database
                 referer_type TEXT NOT NULL DEFAULT 'unknown',
                 ip           TEXT NOT NULL DEFAULT '',
                 user_agent   TEXT NOT NULL DEFAULT '',
+                country      TEXT NOT NULL DEFAULT '',
+                country_code TEXT NOT NULL DEFAULT '',
+                city         TEXT NOT NULL DEFAULT '',
+                zip          TEXT NOT NULL DEFAULT '',
+                lat          REAL,
+                lon          REAL,
                 created_at   TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
-            );
+            )
+        SQL);
 
-            CREATE INDEX IF NOT EXISTS idx_hits_format       ON stream_hits (format);
-            CREATE INDEX IF NOT EXISTS idx_hits_referer      ON stream_hits (referer);
-            CREATE INDEX IF NOT EXISTS idx_hits_referer_type ON stream_hits (referer_type);
-            CREATE INDEX IF NOT EXISTS idx_hits_created      ON stream_hits (created_at);
-            CREATE INDEX IF NOT EXISTS idx_hits_ip           ON stream_hits (ip);
-
+        $this->pdo->exec(<<<'SQL'
             CREATE TABLE IF NOT EXISTS rate_limits (
                 ip         TEXT NOT NULL,
                 minute_key TEXT NOT NULL,
                 hits       INTEGER NOT NULL DEFAULT 1,
                 PRIMARY KEY (ip, minute_key)
-            );
+            )
         SQL);
-        $this->pdo->exec("INSERT INTO schema_migrations (version) VALUES (1)");
-    }
 
-    /** v2: agrega tabla ip_geo y columnas de geolocalización a stream_hits. */
-    private function migrateV2(): void
-    {
         $this->pdo->exec(<<<'SQL'
             CREATE TABLE IF NOT EXISTS ip_geo (
                 ip           TEXT PRIMARY KEY,
@@ -118,28 +93,27 @@ final class Database
                 lat          REAL,
                 lon          REAL,
                 fetched_at   TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
-            );
+            )
         SQL);
 
-        // ALTER TABLE solo agrega columnas que no existan (BD puede venir de v1)
-        $existing = array_column(
-            $this->pdo->query("PRAGMA table_info(stream_hits)")->fetchAll(),
-            'name'
-        );
-        $toAdd = [
-            'country'      => "TEXT NOT NULL DEFAULT ''",
-            'country_code' => "TEXT NOT NULL DEFAULT ''",
-            'city'         => "TEXT NOT NULL DEFAULT ''",
-            'zip'          => "TEXT NOT NULL DEFAULT ''",
-            'lat'          => 'REAL',
-            'lon'          => 'REAL',
-        ];
-        foreach ($toAdd as $col => $type) {
-            if (!in_array($col, $existing, true)) {
-                $this->pdo->exec("ALTER TABLE stream_hits ADD COLUMN {$col} {$type}");
-            }
-        }
+        $this->createIndexes();
+    }
 
-        $this->pdo->exec("INSERT INTO schema_migrations (version) VALUES (2)");
+    /**
+     * Crea los índices necesarios.
+     */
+    private function createIndexes(): void
+    {
+        $indexes = [
+            'idx_hits_format'       => 'CREATE INDEX IF NOT EXISTS idx_hits_format ON stream_hits (format)',
+            'idx_hits_referer'      => 'CREATE INDEX IF NOT EXISTS idx_hits_referer ON stream_hits (referer)',
+            'idx_hits_referer_type' => 'CREATE INDEX IF NOT EXISTS idx_hits_referer_type ON stream_hits (referer_type)',
+            'idx_hits_created'      => 'CREATE INDEX IF NOT EXISTS idx_hits_created ON stream_hits (created_at)',
+            'idx_hits_ip'           => 'CREATE INDEX IF NOT EXISTS idx_hits_ip ON stream_hits (ip)',
+        ];
+
+        foreach ($indexes as $sql) {
+            $this->pdo->exec($sql);
+        }
     }
 }

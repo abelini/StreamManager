@@ -1,0 +1,15 @@
+<?php
+/**
+ * Configuración local - NO incluir en git
+ * Copia este archivo como config.local.php
+ */
+
+declare(strict_types=1);
+
+return [
+    'STATS_USERNAME' => 'admin',
+    'STATS_PASSWORD'  => '$2a%-$...', // PASSWORD_BCRYPT
+
+    'MP3_STREAM_URL'  => 'https://.../stream/mp3',
+    'HLS_STREAM_URL'   => 'https://.../stream/m3u8',
+];

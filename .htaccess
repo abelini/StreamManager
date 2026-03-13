@@ -13,21 +13,32 @@ RewriteEngine On
     Header always set Access-Control-Max-Age       "86400"
 </IfModule>
 
+# Responder preflight OPTIONS sin pasar al controlador
 RewriteCond %{REQUEST_METHOD} OPTIONS
 RewriteRule ^ - [R=204,L]
 
-# Bloquear acceso directo a archivos sensibles
-RewriteRule ^config\.php$ - [F,L]
-RewriteRule ^(.*)\.(log|db|sql|env)$ - [F,L]
+# ── Bloquear archivos sensibles ────────────────────────────────
+RewriteRule ^config\.local\.php$             - [F,L]
+RewriteRule ^config\.php$                    - [F,L]
+RewriteRule ^(.*)\.(log|db|sql|sqlite|env)$  - [F,L]
+RewriteRule ^(data|logs?)/                   - [F,L]
 
-# ── Audio MP3 ─────────────────────────────────────────────────
+# ── Stream: Audio MP3 ─────────────────────────────────────────
 RewriteCond %{QUERY_STRING} (?:^|&)format=mp3(?:&|$)
-RewriteRule ^$ /index.php [L,QSA]
+RewriteRule ^$ index.php [L,QSA]
 
-# ── Video HLS ─────────────────────────────────────────────────
+# ── Stream: Video HLS ─────────────────────────────────────────
 RewriteCond %{QUERY_STRING} (?:^|&)format=hls(?:&|$)
-RewriteRule ^$ /index.php [L,QSA]
+RewriteRule ^$ index.php [L,QSA]
 
-# ── Dashboard ─────────────────────────────────────────────────
-RewriteRule ^stats/?$ /stats.php [L]
-RewriteRule ^stats/api/?$ /stats.php?api=1 [L,QSA]
+# ── Stream: m3u8 (alias de hls, compatibilidad) ───────────────
+RewriteCond %{QUERY_STRING} (?:^|&)format=m3u8(?:&|$)
+RewriteRule ^$ index.php [L,QSA]
+
+# ── Dashboard de estadísticas ──────────────────────────────────
+RewriteRule ^stats/?$ stats.php [L,QSA]
+RewriteRule ^stats/api/?$ stats.php?api=1 [L,QSA]
+RewriteRule ^stats\.php$ - [L]
+
+# ── Fallback: cualquier otra request a la raíz ────────────────
+RewriteRule ^$ index.php [L,QSA]

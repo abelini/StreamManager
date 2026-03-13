@@ -10,7 +10,11 @@
 error_log
 
 # Configuración con credenciales
+config.local.php
 /config.php
+
+# Migraciones
+migrate.php
 
 # Sistema operativo
 .DS_Store

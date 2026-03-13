@@ -55,6 +55,7 @@ final class RateLimiter
     private function purgeExpired(): void
     {
         $current = date('YmdHi');
-        $this->pdo->exec("DELETE FROM rate_limits WHERE minute_key < '{$current}'");
+        $stmt = $this->pdo->prepare('DELETE FROM rate_limits WHERE minute_key < :current');
+        $stmt->execute([':current' => $current]);
     }
 }
