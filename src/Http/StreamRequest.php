@@ -47,6 +47,7 @@ readonly class StreamRequest
             'referer_type' => $this->refererType->value,
             'ip'           => $this->ip,
             'user_agent'   => $this->userAgent,
+            'created_at'   => $this->requestedAt->format('Y-m-d H:i:s'),
         ];
     }
 

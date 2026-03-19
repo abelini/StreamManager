@@ -22,10 +22,10 @@ final class HitRepository
         $stmt = $this->pdo->prepare(<<<'SQL'
             INSERT INTO stream_hits
                 (format, referer_raw, referer, referer_type, ip, user_agent,
-                 country, country_code, city, zip, lat, lon)
+                 country, country_code, city, zip, lat, lon, created_at)
             VALUES
                 (:format, :referer_raw, :referer, :referer_type, :ip, :user_agent,
-                 :country, :country_code, :city, :zip, :lat, :lon)
+                 :country, :country_code, :city, :zip, :lat, :lon, :created_at)
         SQL);
 
         $stmt->execute([
@@ -41,6 +41,7 @@ final class HitRepository
             ':zip'          => $data['zip']          ?? '',
             ':lat'          => $data['lat']          ?? null,
             ':lon'          => $data['lon']          ?? null,
+            ':created_at'   => $data['created_at']   ?? date('Y-m-d H:i:s'),
         ]);
     }
 
