@@ -809,7 +809,7 @@ $summary = $repo->summary();
     function renderRecent(rows) {
       if (!rows.length) { $('tblRecent').innerHTML = '<p style="color:var(--muted);padding:14px 0">Sin datos.</p>'; return; }
       let h = `<div class="tbl-wrap"><table><thead><tr>
-    <th>#</th><th>Tipo</th><th>Referer</th><th>Tipo</th><th>IP</th><th>País</th><th>Ciudad</th><th>Fecha UTC</th>
+    <th>#</th><th>Tipo</th><th>Referer</th><th>Tipo</th><th>IP</th><th>País</th><th>Ciudad</th><th>Fecha (Local)</th>
   </tr></thead><tbody>`;
       rows.forEach(r => {
         const flag = r.country_code ? countryFlag(r.country_code) : '';
