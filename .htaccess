@@ -40,5 +40,8 @@ RewriteRule ^stats/?$ stats.php [L,QSA]
 RewriteRule ^stats/api/?$ stats.php?api=1 [L,QSA]
 RewriteRule ^stats\.php$ - [L]
 
+# ── Reporte PDF ─────────────────────────────────────────────────
+RewriteRule ^report/?$ report.php [L,QSA]
+
 # ── Fallback: cualquier otra request a la raíz ────────────────
 RewriteRule ^$ index.php [L,QSA]

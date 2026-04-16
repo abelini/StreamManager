@@ -478,12 +478,14 @@ $summary = $repo->summary();
     <input type="date" id="f-to">
     <div class="btn-group">
       <button class="btn" data-days="1">Hoy</button>
-      <button class="btn active" data-days="7">7 días</button>
+      <button class="btn" data-days="7">7 días</button>
       <button class="btn" data-days="30">30 días</button>
       <button class="btn" data-days="90">90 días</button>
       <button class="btn" data-days="0">Todo</button>
+      <button class="btn" id="btn-prev-month">Mes Anterior</button>
     </div>
     <button class="btn btn-apply" id="btn-apply">Aplicar →</button>
+    <button class="btn btn-pdf" id="btn-pdf" onclick="downloadPdf()">📄 Descargar PDF</button>
   </div>
 
   <main>
@@ -626,6 +628,40 @@ $summary = $repo->summary();
       currentTo = $('f-to').value || today();
       refresh();
     });
+
+    /* ════════════════════════════════════════════════════════════
+       Botón Mes Anterior
+    ════════════════════════════════════════════════════════════ */
+    $('btn-prev-month').addEventListener('click', () => {
+      const now = new Date();
+      const firstOfPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const lastOfPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+      
+      currentFrom = firstOfPrevMonth.toISOString().slice(0, 10);
+      currentTo = lastOfPrevMonth.toISOString().slice(0, 10);
+      
+      $('f-from').value = currentFrom;
+      $('f-to').value = currentTo;
+      
+      document.querySelectorAll('.btn[data-days]').forEach(b => b.classList.remove('active'));
+      refresh();
+    });
+
+    /* ════════════════════════════════════════════════════════════
+       Descargar PDF
+    ════════════════════════════════════════════════════════════ */
+    function downloadPdf() {
+      const from = $('f-from').value;
+      const to = $('f-to').value;
+      
+      if (!from || !to) {
+        alert('Selecciona un rango de fechas válido');
+        return;
+      }
+      
+      const [year, month] = from.split('-');
+      window.open(`report.php?month=${year}-${month}`, '_blank');
+    }
 
     /* ════════════════════════════════════════════════════════════
        Fetch datos

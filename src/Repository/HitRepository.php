@@ -46,10 +46,19 @@ final class HitRepository
     }
 
     /** Devuelve los KPIs globales: totales, hits hoy e IPs únicas hoy. */
-    public function summary(): StreamSummary
+    public function summary(DateRange|null $range = null): StreamSummary
     {
+        $where = '';
+        $params = [];
+        
+        if ($range !== null) {
+            $where = ' WHERE date(created_at) BETWEEN :from AND :to';
+            $params[':from'] = $range->from;
+            $params[':to'] = $range->to;
+        }
+        
         $total = (int) $this->pdo
-            ->query('SELECT COUNT(*) FROM stream_hits')
+            ->query('SELECT COUNT(*) FROM stream_hits' . $where)
             ->fetchColumn();
 
         $today = (int) $this->pdo
@@ -198,6 +207,26 @@ final class HitRepository
             WHERE  country != ''
               AND  date(created_at) BETWEEN :from AND :to
             GROUP  BY country_code
+            ORDER  BY total DESC
+            LIMIT  :limit
+        SQL);
+        $stmt->bindValue(':from',  $range->from);
+        $stmt->bindValue(':to',    $range->to);
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll();
+    }
+
+    /** Devuelve las ciudades de México con más hits en el rango dado. */
+    public function topCities(DateRange $range, int $limit = 15): array
+    {
+        $stmt = $this->pdo->prepare(<<<'SQL'
+            SELECT city, country_code, COUNT(*) as total
+            FROM   stream_hits
+            WHERE  city != ''
+              AND  country_code = 'MX'
+              AND  date(created_at) BETWEEN :from AND :to
+            GROUP  BY city
             ORDER  BY total DESC
             LIMIT  :limit
         SQL);
