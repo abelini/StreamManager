@@ -209,7 +209,7 @@ $html = <<<HTML
     <p>Las cantidades mostradas son el total de conexiones realizadas al stream de Radio UAS en el periodo indicado.</p>
     <p>Este número representa el total de veces que el stream fue solicitado por los usuarios utilizando el reproductor de Radio UAS, o algún 
         otro servicio externo como TuneIn&reg;, Alexa&reg;, etc.</p>
-    <p>Las cantidades incluyen las conexiones a las diferentes frecuencias FM y al canal de video HLS.</p> 
+    <p>Las cantidades incluyen las conexiones a las diferentes frecuencias FM (Audio MP3) y al canal de TV (Video HLS).</p> 
 
     <table class="kpi-table">
         <tr>
