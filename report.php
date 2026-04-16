@@ -203,7 +203,7 @@ $html = <<<HTML
 <body>
 <div class="header">
         <h1>Estadísticas del Streaming de Radio UAS</h1>
-        <p>Reporte correspondiente a {$dateRange} de {$year}</p>
+        <p>Reporte correspondiente a {$dateRange}</p>
     </div>
     
     <p>Las cantidades mostradas son el total de conexiones realizadas al stream de Radio UAS en el periodo indicado.</p>
