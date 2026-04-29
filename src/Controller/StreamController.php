@@ -8,17 +8,19 @@ use Stream\Logging\Logger;
 use Stream\Repository\HitRepository;
 use Stream\Security\RateLimiter;
 use Stream\Storage\GeoLocator;
+use curl_init;
 
 /** Orquesta validación, rate limiting, geo, logging y redirección del stream. */
 final class StreamController
 {
     public function __construct(
-        private readonly array         $config,
+        private readonly array $config,
         private readonly HitRepository $hits,
-        private readonly RateLimiter   $limiter,
-        private readonly Logger        $logger,
-        private readonly GeoLocator    $geo,
-    ) {}
+        private readonly RateLimiter $limiter,
+        private readonly Logger $logger,
+        private readonly GeoLocator $geo,
+    ) {
+    }
 
     /** Punto de entrada principal; procesa la petición y redirige o aborta. */
     public function handle(): never
@@ -34,7 +36,7 @@ final class StreamController
             $result = $this->limiter->check($request->ip);
             if (!$result->allowed) {
                 $this->logger->error('Rate limit excedido', [
-                    'ip'   => $request->ip,
+                    'ip' => $request->ip,
                     'hits' => $result->currentHits,
                 ]);
                 header('Retry-After: 60');
@@ -49,13 +51,16 @@ final class StreamController
         }
 
         $formatValue = $request->format?->value ?? '';
-        $streamCfg   = $this->config['streams'][$formatValue] ?? null;
+        $streamCfg = $this->config['streams'][$formatValue] ?? null;
 
         if ($streamCfg === null) {
             $this->abort(404, 'Stream no disponible.');
         }
 
         $geoResult = $this->geo->locate($request->ip);
+
+        $json = $request->toJson($request->toArray(), $geoResult->toArray());
+        // aqui va la llamada a la api, igual puede ser al final, ayudame a decidir
 
         try {
             $this->hits->record([
@@ -66,21 +71,39 @@ final class StreamController
             $this->logger->error('Error registrando hit: ' . $e->getMessage());
         }
 
+        // Enviar a API en background (no esperar respuesta)
+        $basePath = dirname(__DIR__, 2);
+        $workerPath = $basePath . DIRECTORY_SEPARATOR . 'bin' . DIRECTORY_SEPARATOR . 'HitSender.php';
+
+        if (file_exists($workerPath)) {
+            // Guardar el JSON en un archivo temporal para pasarlo al worker
+            $tempFile = $basePath . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . 'hit_' . time() . '_' . random_int(1000, 9999) . '.json';
+            file_put_contents($tempFile, $json);
+
+            if (PHP_OS_FAMILY === 'Windows') {
+                $command = "php \"$workerPath\" --file \"$tempFile\"";
+            } else {
+                $command = "php '$workerPath' --file '$tempFile'";
+            }
+            // Ejecutar en background sin esperar respuesta
+            pclose(popen($command, 'r'));
+        }
+
         $this->logger->info('Stream redirect', [
-            'format'  => $formatValue,
+            'format' => $formatValue,
             'referer' => $request->referer,
-            'type'    => $request->refererType->value,
-            'ip'      => $request->ip,
-            'city'    => $geoResult->city,
+            'type' => $request->refererType->value,
+            'ip' => $request->ip,
+            'city' => $geoResult->city,
             'country' => $geoResult->country,
-            'dest'    => $streamCfg['url'],
+            'dest' => $streamCfg['url'],
         ]);
 
         $code = (isset($streamCfg['redirect']) && in_array((int) $streamCfg['redirect'], [301, 302, 307, 308], true))
             ? (int) $streamCfg['redirect']
             : 302;
 
-        header('Location: ' . $streamCfg['url'], replace: true, response_code: $code);
+        //header('Location: ' . $streamCfg['url'], replace: true, response_code: $code);
         exit;
     }
 

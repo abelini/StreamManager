@@ -9,25 +9,25 @@ use Stream\Enum\RefererType;
 /** Value object inmutable que encapsula y sanitiza los datos de la petición entrante. */
 readonly class StreamRequest
 {
-    public StreamFormat|null  $format;
-    public string             $refererRaw;
-    public string             $referer;
-    public RefererType        $refererType;
-    public string             $ip;
-    public string             $userAgent;
+    public StreamFormat|null $format;
+    public string $refererRaw;
+    public string $referer;
+    public RefererType $refererType;
+    public string $ip;
+    public string $userAgent;
     public \DateTimeImmutable $requestedAt;
 
     public function __construct()
     {
-        $this->format      = StreamFormat::tryFromString($_GET['format'] ?? '');
-        $raw               = $_GET['referer'] ?? $_GET['ref'] ?? '';
-        $this->refererRaw  = trim($raw);
-        $this->ip          = $this->resolveIp();
-        $this->userAgent   = mb_substr(trim($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 512);
+        $this->format = StreamFormat::tryFromString($_GET['format'] ?? '');
+        $raw = $_GET['referer'] ?? $_GET['ref'] ?? '';
+        $this->refererRaw = trim($raw);
+        $this->ip = $this->resolveIp();
+        $this->userAgent = mb_substr(trim($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 512);
         $this->requestedAt = new \DateTimeImmutable('now', new \DateTimeZone('America/Mazatlan'));
 
-        [$referer, $type]  = $this->parseReferer($this->refererRaw);
-        $this->referer     = $referer;
+        [$referer, $type] = $this->parseReferer($this->refererRaw);
+        $this->referer = $referer;
         $this->refererType = $type;
     }
 
@@ -41,14 +41,33 @@ readonly class StreamRequest
     public function toArray(): array
     {
         return [
-            'format'       => $this->format?->value ?? '',
-            'referer_raw'  => $this->refererRaw,
-            'referer'      => $this->referer,
+            'format' => $this->format?->value ?? '',
+            'referer_raw' => $this->refererRaw,
+            'referer' => $this->referer,
             'referer_type' => $this->refererType->value,
-            'ip'           => $this->ip,
-            'user_agent'   => $this->userAgent,
-            'created_at'   => $this->requestedAt->format('Y-m-d H:i:s'),
+            'ip' => $this->ip,
+            'user_agent' => $this->userAgent,
+            'created_at' => $this->requestedAt->format('Y-m-d H:i:s'),
         ];
+    }
+
+    public function toJson(array $stream, array $geo): string
+    {
+        $merged = array_merge($stream, $geo);
+        $result = [];
+        $exclude = ['created_at', 'referer_raw'];
+
+        foreach ($merged as $key => $value) {
+            if (in_array($key, $exclude)) {
+                continue;
+            }
+            $result[$this->camelCase($key)] = $value;
+        }
+        return json_encode($result);
+    }
+    private function camelCase(string $string, array $dontStrip = []): string
+    {
+        return lcfirst(str_replace(' ', '', ucwords(preg_replace('/[^a-z0-9' . implode('', $dontStrip) . ']+/', ' ', $string))));
     }
 
     /**
@@ -66,7 +85,7 @@ readonly class StreamRequest
             $raw = explode($sep, $raw)[0];
         }
 
-        $raw   = preg_replace('/ver\d+$/i', '', $raw) ?? $raw;
+        $raw = preg_replace('/ver\d+$/i', '', $raw) ?? $raw;
         $clean = strtolower(
             preg_replace('/[^a-zA-Z0-9.\-]/', '', trim($raw)) ?? ''
         );
@@ -88,7 +107,7 @@ readonly class StreamRequest
      */
     private function resolveIp(): string
     {
-        $remoteAddr     = $_SERVER['REMOTE_ADDR'] ?? '';
+        $remoteAddr = $_SERVER['REMOTE_ADDR'] ?? '';
         $trustedProxies = ['127.0.0.1', '::1'];
 
         if (in_array($remoteAddr, $trustedProxies, true)) {
