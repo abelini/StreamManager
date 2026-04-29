@@ -103,7 +103,7 @@ final class StreamController
             ? (int) $streamCfg['redirect']
             : 302;
 
-        //header('Location: ' . $streamCfg['url'], replace: true, response_code: $code);
+        header('Location: ' . $streamCfg['url'], replace: true, response_code: $code);
         exit;
     }
 
