@@ -47,7 +47,7 @@ if (!$decoded) {
     exit(1);
 }
 
-$apiUrl = 'https://localhost/SPC/api/hits/add';
+$apiUrl = 'https://spc.radiouas.org/api/hits/add';
 
 $ch = curl_init($apiUrl);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
